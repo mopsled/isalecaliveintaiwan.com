@@ -1,6 +1,7 @@
 var express = require("express"),
     url = require("url"),
     request = require("request"),
+    bodyParser = require("body-parser"),
     fs = require("fs"),
     twilio = require("twilio"),
     util = require("util"),
@@ -25,7 +26,7 @@ exports.getLatestMmsImageUrl = function() {
     var mostRecentMMSMessage;
     for (var i = 0; i != allMessagesResponse.end; i++) {
       var message = allMessagesResponse.messages[i];
-      if (message.from == process.env.TRUSTED_PHONE_NUMBER && message.num_media == "1") {
+      if (message.num_media == "1") {
         mostRecentMMSMessage = message;
         break;
       }
@@ -75,26 +76,46 @@ exports.checkEnvironmentVariables = function() {
   }
 }
 
+exports.downloadFile = function(fileUrl, pathToWrite) {
+  var deferred = Q.defer();
+
+  var req = request(fileUrl).pipe(fs.createWriteStream(pathToWrite));
+  req.on("finish", function () {
+    deferred.resolve();
+  });
+
+  return deferred.promise;
+}
+
 exports.createServer = function() {
   var deferred = Q.defer();
 
   exports.checkEnvironmentVariables();
 
-  exports.getLatestMmsImageUrl().done(function(imageUrl) {
-    console.log("Manually refreshing latest image with %s", imageUrl);
+  exports.getLatestMmsImageUrl().then(function(imageUrl) {
+    return exports.downloadFile(imageUrl, "images/latest.jpg");
+  }).then(function() {
+    return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+  }).done(function() {
+    var port = 10080;
 
-    var req = request(imageUrl).pipe(fs.createWriteStream("images/latest.jpg"));
-    req.on("finish", function () {
-      exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg").then(function() {
-        var port = 10080;
+    var app = express();
+    app.use(express.static("static"));
+    app.use("/images", express.static("images"));
+    app.use(bodyParser.urlencoded({ extended: true }));
 
-        var app = express();
-        app.use(express.static('static'));
-        app.use('/images', express.static('images'));
-
-        deferred.resolve(app);
-      });
+    app.post("/twilio", function(req, res) {
+      var validTwilioRequest = twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
+      if (validTwilioRequest) {
+        exports.getLatestMmsImageUrl().then(function(imageUrl) {
+          return exports.downloadFile(imageUrl, "images/latest.jpg");
+        }).then(function() {
+          return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+        })
+      }
     });
+
+    deferred.resolve(app);
   });
 
   return deferred.promise;
@@ -122,70 +143,6 @@ exports.createThumbnail = function(inputFile, outputFile) {
 
   return deferred.promise;
 }
-
-exports.twilioRequestDelegate = function(req, res) {
-  var body = "";
-  req.on("data", function(chunk) {
-    body += chunk;
-  });
-  req.on("end", function() {
-    var messageJson = qs.parse(body);
-    exports.handleNewTwilioMessage(messageJson, res);
-  }).on("error", function(e) {
-    console.log("Got error: " + e.message);
-  });
-};
-
-exports.handleNewTwilioMessage = function(messageJson, res) {
-  exports.validateMessage(messageJson).then(function(valid) {
-    if (valid) {
-      console.log("Validated MMS, writing %s to file", messageJson.MediaUrl0);
-      var req = request(messageJson.MediaUrl0).pipe(fs.createWriteStream("latest.jpg"));
-      req.on("finish", function () {
-        exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-      });
-      return writeSmsResponse(res, "Uploaded MMS");
-    }
-  }).fail(function(error) {
-    console.log("Couldn't validate MMS: " + err);
-    return writeSmsResponse(res, "IsAlecAliveInTaiwan can't validate this MMS");
-  });
-};
-
-exports.validateMessage = function(message) {
-  if (message.from != process.env.TRUSTED_PHONE_NUMBER) {
-    return Q.fcall(function() {
-      throw new Error("Message not from the correct phone number");
-    });
-  }
-  if (message.numMedia != "1") {
-    return Q.fcall(function() {
-      throw new Error("Message does not have exactly one media attachment");
-    });
-  }
-  if (!message.sid) {
-    return Q.fcall(function() {
-      throw new Error("Message does not have a sid");
-    });
-  }
-
-  var client = exports.getTwilioClient()
-
-  return client.messages(message.sid).get().then(function(message) {
-    if (!message.dateCreated) {
-      throw new Error("dateCreated missing from message");
-    }
-
-    var dateSent = new message.dateCreated;
-    var rightNow = new Date();
-    var minutesSinceSent = (rightNow - dateSent) / (1000 * 60 * 5);
-    if (minutesSinceSent > 5) {
-      throw new Error(util.format("Message is too old (%d minutes)", minutesSinceSent));
-    }
-
-    return true;
-  });
-};
 
 function writeSmsResponse(res, message) {
   var resp = new twilio.TwimlResponse();

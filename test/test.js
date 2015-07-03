@@ -50,54 +50,6 @@ describe("Main", function() {
     });
   });
 
-  describe("#validateMessage", function() {
-    it("should not validate an empty message", function(done) {
-      var messageJson = {};
-      main.validateMessage(messageJson).then(function(valid) {
-        assert.fail("Message shouldn't validate");
-        done();
-      }).fail(function(error) {
-        // Message invalid; good
-        done();
-      });
-    });
-
-    it("should not validate a valid-looking message sent from the wrong number", function(done) {
-      var messageJson = {
-        from: "+12345678910",
-        numMedia: "1",
-        sid: "fakeSid123"
-      };
-      main.validateMessage(messageJson).then(function(valid) {
-        assert.fail("Message shouldn't validate");
-        done();
-      }).fail(function(error) {
-        // Message invalid; good
-        done();
-      });
-    });
-
-    it("should not validate a valid-looking message that's too old", function(done) {
-      var messageJson = {
-        sid: "1234",
-        dateCreated: new Date("Fri, 03 Jul 2012 07:19:39 +0000"),
-        dateUpdated: new Date("Fri, 03 Jul 2012 07:19:51 +0000"),
-        dateSent: new Date("Fri, 03 Jul 2012 07:19:51 +0000"),
-        to: "+12345678910",
-        from: process.env.TRUSTED_PHONE_NUMBER,
-        numMedia: "1"
-      };
-
-      main.validateMessage(messageJson).then(function(valid) {
-        assert.fail("Message shouldn't validate");
-        done();
-      }).fail(function(error) {
-        // Message invalid; good
-        done();
-      });
-    });
-  });
-
   describe("#createThumbnail", function() {
     var inputImage = "test/assets/test-picture.jpg";
     var outputImage = "test/assets/test-thumbnail.jpg";
