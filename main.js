@@ -1,6 +1,5 @@
 var express = require("express"),
     url = require("url"),
-    http = require("http"),
     request = require("request"),
     fs = require("fs"),
     twilio = require("twilio"),
@@ -54,22 +53,6 @@ exports.manuallyUpdateLatestImage = function(done) {
   })
 };
 
-exports.getPathDelegate = function(req) {
-  var uri = url.parse(req.url);
-
-  if (uri.pathname == "/") {
-    return exports.indexRequestDelegate;
-  } else if (uri.pathname.indexOf("/twilio") === 0) {
-    return exports.twilioRequestDelegate;
-  } else if (uri.pathname === "/images/latest.jpg") {
-    return exports.imageRequestDelegate;
-  } else if (uri.pathname === "/images/latest-small.jpg") {
-    return exports.thumbImageRequestDelegate;
-  } else {
-    return exports.fileNotFoundDelegate;
-  }
-};
-
 exports.checkConfiguration = function() {
   var requiredEnviromentVariables = [
     "TWILIO_ACCOUNT_SID",
@@ -107,13 +90,13 @@ function startServer() {
 
   var port = 10080;
 
-  http.createServer(function(req, res) {
-    var uri = url.parse(req.url);
-    console.log("Got reqest from " + uri.pathname);
+  var app = express();
+  app.use(express.static('static'));
+  app.use('/images', express.static('images'));
 
-    delegate = exports.getPathDelegate(req);
-    delegate(req, res);
-  }).listen(parseInt(port, 10));
+  app.listen(port, function() {
+    console.log("Listening on http://127.0.0.1:%d", port);
+  });
 };
 
 exports.createThumbnail = function(inputFile, outputFile) {
@@ -138,41 +121,6 @@ exports.createThumbnail = function(inputFile, outputFile) {
 
   return deferred.promise;
 }
-
-exports.indexRequestDelegate = function(req, res) {
-  fs.readFile("static/index.html", function (err, data) {
-    if (err) {
-      return console.log("Error reading index: " + err);
-    }
-    res.writeHead(200, {"Content-Type": "text/html" });
-    res.end(data, "binary");
-  });
-};
-
-exports.imageRequestDelegate = function(req, res) {
-  fs.readFile("images/latest.jpg", function (err, data) {
-    if (err) {
-      return console.log("Error returning latest image: " + err);
-    }
-    res.writeHead(200, {"Content-Type": "image/jpeg" });
-    res.end(data, "binary");
-  });
-};
-
-exports.thumbImageRequestDelegate = function(req, res) {
-  fs.readFile("images/latest-small.jpg", function (err, data) {
-    if (err) {
-      return console.log("Error returning thumbnail image: " + err);
-    }
-    res.writeHead(200, {"Content-Type": "image/jpeg" });
-    res.end(data, "binary");
-  });
-};
-
-exports.fileNotFoundDelegate = function(req, res) {
-  res.writeHead(404);
-  res.end();
-};
 
 exports.twilioRequestDelegate = function(req, res) {
   var body = "";
