@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "istanbul": "^0.3.17",
-    "mocha": "^2.2.5"
+    "mocha": "^2.2.5",
+    "valid-url": "^1.0.9"
   },
   "scripts": {
     "test": "mocha",

@@ -1,12 +1,13 @@
 var assert = require("assert"),
     fs = require("fs")
+    validUrl = require("valid-url")
     main = require("../main.js");
 
 describe("Main", function() {
-  describe("#checkConfiguration", function() {
+  describe("#checkEnvironmentVariables", function() {
     it("should not throw", function(done) {
       assert.doesNotThrow(function() {
-        main.checkConfiguration();
+        main.checkEnvironmentVariables();
       });
       done();
     });
@@ -18,6 +19,15 @@ describe("Main", function() {
 
       assert(client);
       done();
+    });
+  });
+
+  describe("#getLatestMmsImageUrl", function() {
+    it("should return a url", function(done) {
+      main.getLatestMmsImageUrl().then(function(mmsImageUrl) {
+        assert(validUrl.isUri(mmsImageUrl));
+        done();
+      });
     });
   });
 
