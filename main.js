@@ -1,12 +1,13 @@
 var express = require("express"),
     url = require("url"),
-    request = require('request'),
-    fs = require('fs'),
-    twilio = require('twilio'),
-    util = require('util'),
-    qs = require('querystring'),
-    Q = require('q'),
-    lwip = require('lwip');
+    http = require("http"),
+    request = require("request"),
+    fs = require("fs"),
+    twilio = require("twilio"),
+    util = require("util"),
+    qs = require("querystring"),
+    Q = require("q"),
+    lwip = require("lwip");
 
 var client;
 exports.getTwilioClient = function() {
@@ -25,7 +26,7 @@ exports.manuallyUpdateLatestImage = function(done) {
     var mostRecentMMSMessage;
     for (var i = 0; i != allMessagesResponse.end; i++) {
       var message = allMessagesResponse.messages[i];
-      if (message.from == process.env.TRUSTED_PHONE_NUMBER && message.num_media == '1') {
+      if (message.from == process.env.TRUSTED_PHONE_NUMBER && message.num_media == "1") {
         mostRecentMMSMessage = message;
         break;
       }
@@ -42,13 +43,13 @@ exports.manuallyUpdateLatestImage = function(done) {
     }
     var media = allMediaResponse.media_list[0];
 
-    imageUrl = 'https://api.twilio.com' + media.uri.replace(/\.json$/, '');
+    imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
 
     console.log("Manually refreshing latest image with %s", imageUrl);
 
-    var req = request(imageUrl).pipe(fs.createWriteStream('images/latest.jpg'));
-    req.on('finish', function () {
-      createThumbnail();
+    var req = request(imageUrl).pipe(fs.createWriteStream("images/latest.jpg"));
+    req.on("finish", function () {
+      exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
     });
   })
 };
@@ -56,13 +57,13 @@ exports.manuallyUpdateLatestImage = function(done) {
 exports.getPathDelegate = function(req) {
   var uri = url.parse(req.url);
 
-  if (uri.pathname == '/') {
+  if (uri.pathname == "/") {
     return exports.indexRequestDelegate;
-  } else if (uri.pathname.indexOf('/twilio') === 0) {
+  } else if (uri.pathname.indexOf("/twilio") === 0) {
     return exports.twilioRequestDelegate;
-  } else if (uri.pathname === '/images/latest.jpg') {
+  } else if (uri.pathname === "/images/latest.jpg") {
     return exports.imageRequestDelegate;
-  } else if (uri.pathname === '/images/latest-small.jpg') {
+  } else if (uri.pathname === "/images/latest-small.jpg") {
     return exports.thumbImageRequestDelegate;
   } else {
     return exports.fileNotFoundDelegate;
@@ -115,52 +116,56 @@ function startServer() {
   }).listen(parseInt(port, 10));
 };
 
-function createThumbnail() {
-  lwip.open('images/latest.jpg', function(err, image) {
+exports.createThumbnail = function(inputFile, outputFile) {
+  var deferred = Q.defer();
+
+  lwip.open(inputFile, function(err, image) {
     if (err) {
-      return console.log("Can't open image to create thumbnail: " + err);
+      deferred.reject(err);
     }
 
     var scale = 640 / Math.max(image.width(), image.height());
 
     image.batch()
       .scale(scale)
-      .writeFile('images/latest-small.jpg', function(err) {
+      .writeFile(outputFile, function(err) {
         if (err) {
-          return console.log("Couldn't write latest thumbnail: " + err);
+          deferred.reject(err);
         }
-        console.log("Created thumbnail latest-small.jpg");
+        deferred.resolve();
       });
   });
+
+  return deferred.promise;
 }
 
 exports.indexRequestDelegate = function(req, res) {
-  fs.readFile('static/index.html', function (err, data) {
+  fs.readFile("static/index.html", function (err, data) {
     if (err) {
       return console.log("Error reading index: " + err);
     }
-    res.writeHead(200, {'Content-Type': 'text/html' });
-    res.end(data, 'binary');
+    res.writeHead(200, {"Content-Type": "text/html" });
+    res.end(data, "binary");
   });
 };
 
 exports.imageRequestDelegate = function(req, res) {
-  fs.readFile('images/latest.jpg', function (err, data) {
+  fs.readFile("images/latest.jpg", function (err, data) {
     if (err) {
       return console.log("Error returning latest image: " + err);
     }
-    res.writeHead(200, {'Content-Type': 'image/jpeg' });
-    res.end(data, 'binary');
+    res.writeHead(200, {"Content-Type": "image/jpeg" });
+    res.end(data, "binary");
   });
 };
 
 exports.thumbImageRequestDelegate = function(req, res) {
-  fs.readFile('images/latest-small.jpg', function (err, data) {
+  fs.readFile("images/latest-small.jpg", function (err, data) {
     if (err) {
       return console.log("Error returning thumbnail image: " + err);
     }
-    res.writeHead(200, {'Content-Type': 'image/jpeg' });
-    res.end(data, 'binary');
+    res.writeHead(200, {"Content-Type": "image/jpeg" });
+    res.end(data, "binary");
   });
 };
 
@@ -170,14 +175,14 @@ exports.fileNotFoundDelegate = function(req, res) {
 };
 
 exports.twilioRequestDelegate = function(req, res) {
-  var body = '';
-  req.on('data', function(chunk) {
+  var body = "";
+  req.on("data", function(chunk) {
     body += chunk;
   });
-  req.on('end', function() {
+  req.on("end", function() {
     var messageJson = qs.parse(body);
     exports.handleNewTwilioMessage(messageJson, res);
-  }).on('error', function(e) {
+  }).on("error", function(e) {
     console.log("Got error: " + e.message);
   });
 };
@@ -186,9 +191,9 @@ exports.handleNewTwilioMessage = function(messageJson, res) {
   exports.validateMessage(messageJson).then(function(valid) {
     if (valid) {
       console.log("Validated MMS, writing %s to file", messageJson.MediaUrl0);
-      var req = request(messageJson.MediaUrl0).pipe(fs.createWriteStream('images/latest.jpg'));
-      req.on('finish', function () {
-        createThumbnail();
+      var req = request(messageJson.MediaUrl0).pipe(fs.createWriteStream("latest.jpg"));
+      req.on("finish", function () {
+        exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
       });
       return writeSmsResponse(res, "Uploaded MMS");
     }
@@ -204,7 +209,7 @@ exports.validateMessage = function(message) {
       throw new Error("Message not from the correct phone number");
     });
   }
-  if (message.NumMedia != '1') {
+  if (message.NumMedia != "1") {
     return Q.fcall(function() {
       throw new Error("Message does not have exactly one media attachment");
     });
@@ -237,11 +242,11 @@ function writeSmsResponse(res, message) {
   var resp = new twilio.TwimlResponse();
   resp.sms(message);
 
-  res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
+  res.writeHead(200, {"Content-Type": "text/xml; charset=utf-8"});
   res.write(resp.toString());
   res.end();
 }
 
 if (require.main === module) {
-    startServer();
+  startServer();
 }
