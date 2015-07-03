@@ -78,11 +78,7 @@ exports.checkEnvironmentVariables = function() {
 function startServer() {
   exports.checkEnvironmentVariables();
 
-  exports.manuallyUpdateLatestImage(function(err) {
-    if (err) {
-      console.log("Couldn't update image to latest: " + err);
-    }
-  }).done(function(imageUrl) {
+  exports.getLatestMmsImageUrl().done(function(imageUrl) {
     console.log("Manually refreshing latest image with %s", imageUrl);
 
     var req = request(imageUrl).pipe(fs.createWriteStream("images/latest.jpg"));
@@ -155,30 +151,30 @@ exports.handleNewTwilioMessage = function(messageJson, res) {
 };
 
 exports.validateMessage = function(message) {
-  if (message.From != process.env.TRUSTED_PHONE_NUMBER) {
+  if (message.from != process.env.TRUSTED_PHONE_NUMBER) {
     return Q.fcall(function() {
       throw new Error("Message not from the correct phone number");
     });
   }
-  if (message.NumMedia != "1") {
+  if (message.numMedia != "1") {
     return Q.fcall(function() {
       throw new Error("Message does not have exactly one media attachment");
     });
   }
-  if (!message.MessageSid) {
+  if (!message.sid) {
     return Q.fcall(function() {
-      throw new Error("Message does not have a MessageSid");
+      throw new Error("Message does not have a sid");
     });
   }
 
   var client = exports.getTwilioClient()
 
-  return client.messages(message.MessageSid).get().then(function(message) {
-    if (!message.date_created) {
-      throw new Error("date_created missing from message");
+  return client.messages(message.sid).get().then(function(message) {
+    if (!message.dateCreated) {
+      throw new Error("dateCreated missing from message");
     }
 
-    var dateSent = new Date(message.date_created);
+    var dateSent = new message.dateCreated;
     var rightNow = new Date();
     var minutesSinceSent = (rightNow - dateSent) / (1000 * 60 * 5);
     if (minutesSinceSent > 5) {
