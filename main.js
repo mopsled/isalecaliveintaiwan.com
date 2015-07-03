@@ -75,7 +75,9 @@ exports.checkEnvironmentVariables = function() {
   }
 }
 
-function startServer() {
+exports.createServer = function() {
+  var deferred = Q.defer();
+
   exports.checkEnvironmentVariables();
 
   exports.getLatestMmsImageUrl().done(function(imageUrl) {
@@ -90,12 +92,12 @@ function startServer() {
         app.use(express.static('static'));
         app.use('/images', express.static('images'));
 
-        app.listen(port, function() {
-          console.log("Listening on http://127.0.0.1:%d", port);
-        });
+        deferred.resolve(app);
       });
     });
   });
+
+  return deferred.promise;
 };
 
 exports.createThumbnail = function(inputFile, outputFile) {
@@ -195,5 +197,9 @@ function writeSmsResponse(res, message) {
 }
 
 if (require.main === module) {
-  startServer();
+  exports.createServer().then(function(app) {
+    app.listen(10080, function() {
+      console.log("Listening on http://127.0.0.1:10080", port);
+    });
+  });
 }
