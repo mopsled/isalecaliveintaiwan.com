@@ -1,0 +1,25 @@
+{
+  "name": "isalecaliveintaiwan.com",
+  "description": "Website repository for isalecaliveintaiwan.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mopsled/isalecaliveintaiwan.com"
+  },
+  "version": "0.1.0",
+  "dependencies": {
+    "express": "^4.13.0",
+    "lwip": "~0.0.6",
+    "q": "~1.2.0",
+    "request": "~2.55.0",
+    "twilio": "~1.11.1"
+  },
+  "devDependencies": {
+    "istanbul": "^0.3.17",
+    "mocha": "^2.2.5"
+  },
+  "scripts": {
+    "test": "mocha",
+    "test:watch": "mocha -w",
+    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --"
+  }
+}
