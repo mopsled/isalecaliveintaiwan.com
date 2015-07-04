@@ -2,6 +2,9 @@ var assert = require("assert"),
     fs = require("fs")
     validUrl = require("valid-url")
     request = require("supertest")
+    nock = require("nock")
+    twilio = require("twilio")
+    path = require("path")
     main = require("../main.js");
 
 describe("Main", function() {
@@ -93,8 +96,16 @@ describe("Main", function() {
     var app;
 
     before(function(done) {
-      this.timeout(10000);
-      main.createServer().then(function(server) {
+      this.timeout(5000);
+      nock("https://media.twiliocdn.com:443")
+        .filteringPath(/^.+$/, "/test-image")
+        .get("/test-image")
+        .replyWithFile(200, path.join(__dirname, "assets", "test-picture.jpg"));
+
+      var twilioMessageValidator = function(req) {
+        return twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
+      }
+      main.createServer(twilioMessageValidator).then(function(server) {
         app = server;
         done();
       }).catch(done);
@@ -104,6 +115,30 @@ describe("Main", function() {
       request(app)
         .get("/")
         .expect(200, done);
+    });
+
+    it("should return 403 for forged POST to /twilio", function(done) {
+      request(app)
+        .post("/twilio")
+        .send({ sid: "fakesid" })
+        .expect(403, done);
+    });
+
+    it("should respond with 200 for a valid post to /twilio", function(done) {
+      this.timeout(5000);
+
+      nock("https://media.twiliocdn.com:443")
+        .filteringPath(/^.+$/, "/test-image")
+        .get("/test-image")
+        .replyWithFile(200, path.join(__dirname, "assets", "test-picture.jpg"));
+      var mockMessageValidator = function(req) {
+        return true;
+      }
+      main.createServer(mockMessageValidator).then(function(server) {
+        request(server)
+          .post("/twilio")
+          .expect(200, done);
+      }).catch(done);
     });
   });
 });

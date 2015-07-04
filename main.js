@@ -6,8 +6,11 @@ var express = require("express"),
     twilio = require("twilio"),
     util = require("util"),
     qs = require("querystring"),
-    Q = require("q"),
+    Promise = require("bluebird"),
+    replay = require("request-replay"),
     lwip = require("lwip");
+
+Promise.promisifyAll(require("twilio"));
 
 var client;
 exports.getTwilioClient = function() {
@@ -23,8 +26,12 @@ exports.getLatestMmsImageUrl = function() {
   var client = exports.getTwilioClient();
 
   return client.messages.get({from: process.env.TRUSTED_PHONE_NUMBER}).then(function(allMessagesResponse) {
+    if (!allMessagesResponse) {
+      throw new Error("Couldn't find any messages from " + process.env.TRUSTED_PHONE_NUMBER);
+    }
+
     var mostRecentMMSMessage;
-    for (var i = 0; i != allMessagesResponse.end; i++) {
+    for (var i = 0; i < allMessagesResponse.messages.length; i++) {
       var message = allMessagesResponse.messages[i];
       if (message.num_media == "1") {
         mostRecentMMSMessage = message;
@@ -33,17 +40,18 @@ exports.getLatestMmsImageUrl = function() {
     }
 
     if (!mostRecentMMSMessage) {
-      throw { message: "Couldn't find a most recent SMS message" };
+      throw new Error("Couldn't find a most recent SMS message");
     }
 
     return client.messages(mostRecentMMSMessage.sid).media.get();
   }).then(function(allMediaResponse) {
     if (!allMediaResponse.media_list || !allMediaResponse.media_list[0].sid) {
-      throw { message: "Couldn't find a media sid for media that was indended to have an attachment" };
+      throw new Error("Couldn't find a media sid for media that was indended to have an attachment");
     }
 
     var media = allMediaResponse.media_list[0];
     var imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
+
     return imageUrl;
   });
 };
@@ -77,71 +85,79 @@ exports.checkEnvironmentVariables = function() {
 }
 
 exports.downloadFile = function(fileUrl, pathToWrite) {
-  var deferred = Q.defer();
-
-  var req = request(fileUrl).pipe(fs.createWriteStream(pathToWrite));
-  req.on("finish", function () {
-    deferred.resolve();
+  return new Promise(function(resolve, reject) {
+    replay(request(fileUrl))
+      .on("error", function(err) {
+        reject(err);
+      })
+      .pipe(fs.createWriteStream(pathToWrite))
+      .on("replay", function(replays) {
+        console.log("Failed to download %s, try #%d", fileUrl, replays);
+      })
+      .on("error", function () {
+        reject(err);
+      })
+      .on("close", function () {
+        resolve();
+      });
   });
-
-  return deferred.promise;
 }
 
-exports.createServer = function() {
-  var deferred = Q.defer();
+exports.createServer = function(twilioMessageValidator) {
+  return new Promise(function(resolve, reject) {
+    exports.checkEnvironmentVariables();
 
-  exports.checkEnvironmentVariables();
+    exports.getLatestMmsImageUrl().then(function(imageUrl) {
+      return exports.downloadFile(imageUrl, "images/latest.jpg");
+    }).then(function() {
+      return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+    }).then(function() {
+      var port = 10080;
 
-  exports.getLatestMmsImageUrl().then(function(imageUrl) {
-    return exports.downloadFile(imageUrl, "images/latest.jpg");
-  }).then(function() {
-    return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-  }).done(function() {
-    var port = 10080;
+      var app = express();
+      app.use(express.static("static"));
+      app.use("/images", express.static("images"));
+      app.use(bodyParser.urlencoded({ extended: true }));
 
-    var app = express();
-    app.use(express.static("static"));
-    app.use("/images", express.static("images"));
-    app.use(bodyParser.urlencoded({ extended: true }));
+      app.post("/twilio", function(req, res) {
+        var validTwilioRequest = twilioMessageValidator(req);
+        if (validTwilioRequest) {
+          writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+          exports.getLatestMmsImageUrl().then(function(imageUrl) {
+            return exports.downloadFile(imageUrl, "images/latest.jpg");
+          }).then(function() {
+            return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+          }).done();
+        } else {
+          res.sendStatus(403);
+          res.end();
+        }
+      });
 
-    app.post("/twilio", function(req, res) {
-      var validTwilioRequest = twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
-      if (validTwilioRequest) {
-        exports.getLatestMmsImageUrl().then(function(imageUrl) {
-          return exports.downloadFile(imageUrl, "images/latest.jpg");
-        }).then(function() {
-          return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-        })
-      }
+      resolve(app);
     });
-
-    deferred.resolve(app);
   });
-
-  return deferred.promise;
 };
 
 exports.createThumbnail = function(inputFile, outputFile) {
-  var deferred = Q.defer();
+  return new Promise(function(resolve, reject) {
+    lwip.open(inputFile, function(err, image) {
+      if (err) {
+        reject(err);
+      }
 
-  lwip.open(inputFile, function(err, image) {
-    if (err) {
-      deferred.reject(err);
-    }
+      var scale = 640 / Math.max(image.width(), image.height());
 
-    var scale = 640 / Math.max(image.width(), image.height());
-
-    image.batch()
-      .scale(scale)
-      .writeFile(outputFile, function(err) {
-        if (err) {
-          deferred.reject(err);
-        }
-        deferred.resolve();
-      });
+      image.batch()
+        .scale(scale)
+        .writeFile(outputFile, function(err) {
+          if (err) {
+            reject(err);
+          }
+          resolve();
+        });
+    });
   });
-
-  return deferred.promise;
 }
 
 function writeSmsResponse(res, message) {
@@ -154,9 +170,14 @@ function writeSmsResponse(res, message) {
 }
 
 if (require.main === module) {
-  exports.createServer().then(function(app) {
+  var twilioMessageValidator = function(req) {
+    return twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
+  }
+
+  console.log("Starting server...");
+  exports.createServer(twilioMessageValidator).then(function(app) {
     app.listen(10080, function() {
-      console.log("Listening on http://127.0.0.1:10080", port);
+      console.log("Listening on http://127.0.0.1:10080");
     });
-  });
+  }).done();
 }

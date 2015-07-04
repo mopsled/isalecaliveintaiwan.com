@@ -7,22 +7,27 @@
   },
   "version": "0.1.0",
   "dependencies": {
+    "bluebird": "^2.9.31",
     "body-parser": "^1.13.1",
     "express": "^4.13.0",
     "lwip": "~0.0.6",
     "q": "~1.2.0",
     "request": "~2.55.0",
+    "request-replay": "^0.3.0",
     "twilio": "~1.11.1"
   },
   "devDependencies": {
     "istanbul": "^0.3.17",
     "mocha": "^2.2.5",
+    "nock": "^2.7.0",
+    "node-inspector": "^0.11.1",
     "supertest": "^1.0.1",
     "valid-url": "^1.0.9"
   },
   "scripts": {
     "test": "mocha",
     "test:watch": "mocha -w",
-    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --"
+    "test:debug": "node-debug _mocha",
+    "coverage": "istanbul cover _mocha --"
   }
 }
