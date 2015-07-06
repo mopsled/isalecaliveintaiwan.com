@@ -94,7 +94,7 @@ exports.downloadFile = function(fileUrl, pathToWrite) {
       .on("replay", function(replays) {
         console.log("Failed to download %s, try #%d", fileUrl, replays);
       })
-      .on("error", function () {
+      .on("error", function (err) {
         reject(err);
       })
       .on("close", function () {
@@ -176,8 +176,9 @@ if (require.main === module) {
 
   console.log("Starting server...");
   exports.createServer(twilioMessageValidator).then(function(app) {
-    app.listen(10080, function() {
-      console.log("Listening on http://127.0.0.1:10080");
+    var port = process.env.PORT || 10080;
+    app.listen(port, function() {
+      console.log("Listening on http://127.0.0.1:%d", port);
     });
   }).done();
 }

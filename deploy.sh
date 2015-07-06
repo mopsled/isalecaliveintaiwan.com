@@ -1,0 +1,1 @@
+node_modules/forever/bin/forever -d -v ./main.js
