@@ -8,9 +8,8 @@ var express = require("express"),
     qs = require("querystring"),
     Promise = require("bluebird"),
     replay = require("request-replay"),
+    debug = require("debug")("iaait.com")
     lwip = require("lwip");
-
-Promise.promisifyAll(require("twilio"));
 
 var client;
 exports.getTwilioClient = function() {
@@ -53,6 +52,8 @@ exports.getLatestMmsImageUrl = function() {
     var imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
 
     return imageUrl;
+  }).fail(function(error) {
+    debug("Failed to get latest MMS Url:", error);
   });
 };
 
@@ -92,7 +93,7 @@ exports.downloadFile = function(fileUrl, pathToWrite) {
       })
       .pipe(fs.createWriteStream(pathToWrite))
       .on("replay", function(replays) {
-        console.log("Failed to download %s, try #%d", fileUrl, replays);
+        debug("Failed to download %s, try #%d", fileUrl, replays);
       })
       .on("error", function (err) {
         reject(err);
@@ -107,11 +108,15 @@ exports.createServer = function(twilioMessageValidator) {
   return new Promise(function(resolve, reject) {
     exports.checkEnvironmentVariables();
 
+    debug("(1/4) Getting latest MMS");
     exports.getLatestMmsImageUrl().then(function(imageUrl) {
+      debug("(2/4) Downloading latest MMS from %s", imageUrl);
       return exports.downloadFile(imageUrl, "images/latest.jpg");
     }).then(function() {
+      debug("(3/4) Creating thumbnail");
       return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
     }).then(function() {
+      debug("(4/4) Defining server")
       var port = 10080;
 
       var app = express();
@@ -120,8 +125,10 @@ exports.createServer = function(twilioMessageValidator) {
       app.use(bodyParser.urlencoded({ extended: true }));
 
       app.post("/twilio", function(req, res) {
+        debug("Received POST to /twilio");
         var validTwilioRequest = twilioMessageValidator(req);
         if (validTwilioRequest) {
+          debug("Valid twilio request!");
           writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
           exports.getLatestMmsImageUrl().then(function(imageUrl) {
             return exports.downloadFile(imageUrl, "images/latest.jpg");
@@ -129,6 +136,7 @@ exports.createServer = function(twilioMessageValidator) {
             return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
           }).done();
         } else {
+          debug("Invalid twilio request!");
           res.sendStatus(403);
           res.end();
         }
@@ -174,11 +182,11 @@ if (require.main === module) {
     return twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
   }
 
-  console.log("Starting server...");
+  debug("Starting server...");
   exports.createServer(twilioMessageValidator).then(function(app) {
     var port = process.env.PORT || 10080;
     app.listen(port, function() {
-      console.log("Listening on http://127.0.0.1:%d", port);
+      debug("Listening on http://127.0.0.1:%d", port);
     });
   }).done();
 }
