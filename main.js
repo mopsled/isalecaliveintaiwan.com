@@ -10,6 +10,7 @@ var express = require("express"),
     replay = require("request-replay"),
     debug = require("debug")("iaait.com"),
     moment = require("moment"),
+    later = require("later"),
     lwip = require("lwip");
 
 var store = {};
@@ -64,7 +65,8 @@ exports.checkEnvironmentVariables = function() {
   var requiredEnviromentVariables = [
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
-    "TRUSTED_PHONE_NUMBER"
+    "TRUSTED_PHONE_NUMBER",
+    "SMS_OUTBOUND_PHONE_NUMBER"
   ];
 
   var missingEnviromentVariables = [];
@@ -188,6 +190,31 @@ function writeSmsResponse(res, message) {
   res.end();
 }
 
+function setReminderTimer() {
+  var schedule = later.parse.recur().every(4).hour().after('08:00').time();
+  later.setInterval(sendReminderIfNecessary, schedule);
+}
+
+function sendReminderIfNecessary() {
+  debug("Checking reminder timer");
+  var lastSentDate = store["mmsSentDate"];
+  var hoursSinceLastUpdate = moment(lastSentDate).diff(moment(new Date()), 'hours');
+  debug("Hours since last update:", hoursSinceLastUpdate);
+  if (hoursSinceLastUpdate >= 24) {
+    debug("hoursSinceLastUpdate: %d, sending a reminder text", hoursSinceLastUpdate);
+    var client = exports.getTwilioClient();
+    client.sms.messages.post({
+      to: process.env.TRUSTED_PHONE_NUMBER,
+      from: process.env.SMS_OUTBOUND_PHONE_NUMBER,
+      body: "It's been " + hoursSinceLastUpdate + " hours since last update"
+    }, function(err, text) {
+      if (err) {
+        debug("Error sending SMS reminder", err);
+      }
+    });
+  }
+}
+
 if (require.main === module) {
   var twilioMessageValidator = function(req) {
     return twilio.validateExpressRequest(req, process.env.TWILIO_AUTH_TOKEN);
@@ -195,6 +222,8 @@ if (require.main === module) {
 
   debug("Starting server...");
   exports.createServer(twilioMessageValidator).then(function(app) {
+    setReminderTimer();
+    sendReminderIfNecessary();
     var port = process.env.PORT || 10080;
     app.listen(port, function() {
       debug("Listening on http://127.0.0.1:%d", port);
