@@ -12,7 +12,7 @@
     "debug": "^2.2.0",
     "express": "^4.13.0",
     "forever": "^0.14.2",
-    "hookshot": "https://github.com/mhkeller/hookshot.git",
+    "hookshot": "https://github.com/mhkeller/hookshot/tarball/master",
     "lwip": "~0.0.6",
     "q": "~1.2.0",
     "request": "~2.55.0",
