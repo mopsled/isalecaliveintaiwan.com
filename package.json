@@ -12,6 +12,7 @@
     "debug": "^2.2.0",
     "express": "^4.13.0",
     "forever": "^0.14.2",
+    "hookshot": "https://github.com/mhkeller/hookshot.git",
     "lwip": "~0.0.6",
     "q": "~1.2.0",
     "request": "~2.55.0",
@@ -31,6 +32,6 @@
     "test:watch": "mocha -w",
     "test:debug": "node-debug _mocha",
     "coverage": "istanbul cover _mocha --",
-    "serve": "node ./main.js"
+    "serve": "forever -w --watchDirectory . --watchIgnore *.log --watchIgnore *.jpg main.js"
   }
 }

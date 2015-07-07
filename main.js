@@ -9,6 +9,7 @@ var express = require("express"),
     Promise = require("bluebird"),
     replay = require("request-replay"),
     debug = require("debug")("iaait.com")
+    hookshot = require("hookshot")
     lwip = require("lwip");
 
 var client;
@@ -123,6 +124,8 @@ exports.createServer = function(twilioMessageValidator) {
       app.use(express.static("static"));
       app.use("/images", express.static("images"));
       app.use(bodyParser.urlencoded({ extended: true }));
+
+      app.use('/github-webhook', hookshot('refs/heads/master', 'git pull && npm update'));
 
       app.post("/twilio", function(req, res) {
         debug("Received POST to /twilio");
