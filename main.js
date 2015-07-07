@@ -8,8 +8,11 @@ var express = require("express"),
     qs = require("querystring"),
     Promise = require("bluebird"),
     replay = require("request-replay"),
-    debug = require("debug")("iaait.com")
+    debug = require("debug")("iaait.com"),
+    moment = require("moment"),
     lwip = require("lwip");
+
+var store = {};
 
 var client;
 exports.getTwilioClient = function() {
@@ -21,15 +24,15 @@ exports.getTwilioClient = function() {
   return client;
 };
 
-exports.getLatestMmsImageUrl = function() {
+exports.getLatestMms = function() {
   var client = exports.getTwilioClient();
+  var mostRecentMMSMessage;
 
   return client.messages.get({from: process.env.TRUSTED_PHONE_NUMBER}).then(function(allMessagesResponse) {
     if (!allMessagesResponse) {
       throw new Error("Couldn't find any messages from " + process.env.TRUSTED_PHONE_NUMBER);
     }
 
-    var mostRecentMMSMessage;
     for (var i = 0; i < allMessagesResponse.messages.length; i++) {
       var message = allMessagesResponse.messages[i];
       if (message.num_media == "1") {
@@ -51,7 +54,7 @@ exports.getLatestMmsImageUrl = function() {
     var media = allMediaResponse.media_list[0];
     var imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
 
-    return imageUrl;
+    return { url: imageUrl, sent: new Date(mostRecentMMSMessage.date_sent) };
   }).fail(function(error) {
     debug("Failed to get latest MMS Url:", error);
   });
@@ -109,9 +112,10 @@ exports.createServer = function(twilioMessageValidator) {
     exports.checkEnvironmentVariables();
 
     debug("(1/4) Getting latest MMS");
-    exports.getLatestMmsImageUrl().then(function(imageUrl) {
-      debug("(2/4) Downloading latest MMS from %s", imageUrl);
-      return exports.downloadFile(imageUrl, "images/latest.jpg");
+    exports.getLatestMms().then(function(image) {
+      debug("(2/4) Downloading latest MMS from %s", image.url);
+      store["mmsSentDate"] = image.sent;
+      return exports.downloadFile(image.url, "images/latest.jpg");
     }).then(function() {
       debug("(3/4) Creating thumbnail");
       return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
@@ -120,9 +124,15 @@ exports.createServer = function(twilioMessageValidator) {
       var port = 10080;
 
       var app = express();
-      app.use(express.static("static"));
-      app.use("/images", express.static("images"));
-      app.use(bodyParser.urlencoded({ extended: true }));
+      app
+        .set("views", __dirname + "/views")
+        .set('view engine', 'jade')
+        .use("/images", express.static("images"))
+        .use(bodyParser.urlencoded({ extended: true }));
+
+      app.get('/', function(req, res) {
+        res.render('index', { timespan: moment(store["mmsSentDate"]).fromNow() });
+      });
 
       app.post("/twilio", function(req, res) {
         debug("Received POST to /twilio");
@@ -130,8 +140,9 @@ exports.createServer = function(twilioMessageValidator) {
         if (validTwilioRequest) {
           debug("Valid twilio request!");
           writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
-          exports.getLatestMmsImageUrl().then(function(imageUrl) {
-            return exports.downloadFile(imageUrl, "images/latest.jpg");
+          exports.getLatestMms().then(function(image) {
+            store["mmsSentDate"] = image.sent;
+            return exports.downloadFile(image.url, "images/latest.jpg");
           }).then(function() {
             return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
           }).done();
