@@ -36,7 +36,7 @@ exports.getLatestMms = function() {
 
     for (var i = 0; i < allMessagesResponse.messages.length; i++) {
       var message = allMessagesResponse.messages[i];
-      if (message.num_media == "1") {
+      if (message.num_media == "1" && message.body.match(new RegExp(process.env.MMS_SECRET))) {
         mostRecentMMSMessage = message;
         break;
       }
@@ -66,7 +66,8 @@ exports.checkEnvironmentVariables = function() {
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
     "TRUSTED_PHONE_NUMBER",
-    "SMS_OUTBOUND_PHONE_NUMBER"
+    "TWILIO_PHONE_NUMBER",
+    "MMS_SECRET"
   ];
 
   var missingEnviromentVariables = [];
@@ -205,7 +206,7 @@ function sendReminderIfNecessary() {
     var client = exports.getTwilioClient();
     client.sms.messages.post({
       to: process.env.TRUSTED_PHONE_NUMBER,
-      from: process.env.SMS_OUTBOUND_PHONE_NUMBER,
+      from: process.env.TWILIO_PHONE_NUMBER,
       body: "It's been " + hoursSinceLastUpdate + " hours since last update"
     }, function(err, text) {
       if (err) {
