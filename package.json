@@ -34,6 +34,6 @@
     "test:watch": "mocha -w",
     "test:debug": "node-debug _mocha",
     "coverage": "istanbul cover _mocha --",
-    "serve": "forever -w --watchDirectory . --watchIgnore '!{main.js,{views}/**}' main.js"
+    "start": "forever -w --watchDirectory . --watchIgnore '!{main.js,{views}/**}' main.js"
   }
 }
