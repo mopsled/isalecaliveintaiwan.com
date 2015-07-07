@@ -191,7 +191,7 @@ function writeSmsResponse(res, message) {
 }
 
 function setReminderTimer() {
-  var schedule = later.parse.recur().every(4).hour().after('08:00').time();
+  var schedule = later.parse.recur().every(2).hour().after('08:00').time();
   later.setInterval(sendReminderIfNecessary, schedule);
 }
 
@@ -200,7 +200,7 @@ function sendReminderIfNecessary() {
   var lastSentDate = store["mmsSentDate"];
   var hoursSinceLastUpdate = moment(lastSentDate).diff(moment(new Date()), 'hours');
   debug("Hours since last update:", hoursSinceLastUpdate);
-  if (hoursSinceLastUpdate >= 24) {
+  if (hoursSinceLastUpdate >= 4) {
     debug("hoursSinceLastUpdate: %d, sending a reminder text", hoursSinceLastUpdate);
     var client = exports.getTwilioClient();
     client.sms.messages.post({
