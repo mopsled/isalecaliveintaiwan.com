@@ -199,7 +199,7 @@ function setReminderTimer() {
 function sendReminderIfNecessary() {
   debug("Checking reminder timer");
   var lastSentDate = store["mmsSentDate"];
-  var hoursSinceLastUpdate = moment(lastSentDate).diff(moment(new Date()), 'hours');
+  var hoursSinceLastUpdate = moment(new Date()).diff(moment(lastSentDate), 'hours');
   debug("Hours since last update:", hoursSinceLastUpdate);
   if (hoursSinceLastUpdate >= 4) {
     debug("hoursSinceLastUpdate: %d, sending a reminder text", hoursSinceLastUpdate);
