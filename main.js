@@ -224,7 +224,6 @@ if (require.main === module) {
   debug("Starting server...");
   exports.createServer(twilioMessageValidator).then(function(app) {
     setReminderTimer();
-    sendReminderIfNecessary();
     var port = process.env.PORT || 10080;
     app.listen(port, function() {
       debug("Listening on http://127.0.0.1:%d", port);
