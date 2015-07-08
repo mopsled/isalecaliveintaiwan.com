@@ -114,16 +114,8 @@ exports.createServer = function(twilioMessageValidator) {
   return new Promise(function(resolve, reject) {
     exports.checkEnvironmentVariables();
 
-    debug("(1/4) Getting latest MMS");
-    exports.getLatestMms().then(function(image) {
-      debug("(2/4) Downloading latest MMS from %s", image.url);
-      store["mmsSentDate"] = image.sent;
-      return exports.downloadFile(image.url, "images/latest.jpg");
-    }).then(function() {
-      debug("(3/4) Creating thumbnail");
-      return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-    }).then(function() {
-      debug("(4/4) Defining server")
+    exports.updateLatestMMS().then(function() {
+      debug("Defining express server");
       var port = 10080;
 
       var app = express();
@@ -143,12 +135,7 @@ exports.createServer = function(twilioMessageValidator) {
         if (validTwilioRequest) {
           debug("Valid twilio request!");
           writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
-          exports.getLatestMms().then(function(image) {
-            store["mmsSentDate"] = image.sent;
-            return exports.downloadFile(image.url, "images/latest.jpg");
-          }).then(function() {
-            return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-          }).done();
+          exports.updateLatestMMS().done();
         } else {
           debug("Invalid twilio request!");
           res.sendStatus(403);
@@ -157,9 +144,31 @@ exports.createServer = function(twilioMessageValidator) {
       });
 
       resolve(app);
-    });
+    }).done();
   });
 };
+
+exports.updateLatestMMS = function() {
+  debug("(1/3) Getting latest MMS");
+  var image;
+  return exports.getLatestMms().then(function(latestImage) {
+    image = latestImage;
+
+    if (image.url === store["lastImageSaved"]) {
+      debug("(3/3) Skipping download, %s has already been saved", image.url);
+      return;
+    } else {
+      debug("(2/3) Downloading latest MMS from %s", image.url);
+      store["mmsSentDate"] = image.sent;
+      return exports.downloadFile(image.url, "images/latest.jpg").then(function() {
+        debug("(3/3) Creating thumbnail");
+        return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+      }).then(function() {
+        store["lastImageSaved"] = image.url;
+      });
+    }
+  });
+}
 
 exports.createThumbnail = function(inputFile, outputFile) {
   return new Promise(function(resolve, reject) {
@@ -196,6 +205,11 @@ function setReminderTimer() {
   later.setInterval(sendReminderIfNecessary, schedule);
 }
 
+function setUpdateTimer() {
+  var schedule = later.parse.recur().every(2).hour();
+  later.setInterval(exports.updateLatestMMS, schedule);
+}
+
 function sendReminderIfNecessary() {
   debug("Checking reminder timer");
   var lastSentDate = store["mmsSentDate"];
@@ -224,7 +238,7 @@ if (require.main === module) {
   debug("Starting server...");
   exports.createServer(twilioMessageValidator).then(function(app) {
     setReminderTimer();
-    sendReminderIfNecessary();
+    setUpdateTimer();
     var port = process.env.PORT || 10080;
     app.listen(port, function() {
       debug("Listening on http://127.0.0.1:%d", port);
