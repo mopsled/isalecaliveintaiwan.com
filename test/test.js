@@ -127,6 +127,12 @@ describe("Main", function() {
     it("should respond with 200 for a valid post to /twilio", function(done) {
       this.timeout(10000);
 
+      // First nock for server startup
+      nock("https://media.twiliocdn.com:443")
+        .filteringPath(/^.+$/, "/test-image")
+        .get("/test-image")
+        .replyWithFile(200, path.join(__dirname, "assets", "test-picture.jpg"));
+      // Second nock for twilio image download
       nock("https://media.twiliocdn.com:443")
         .filteringPath(/^.+$/, "/test-image")
         .get("/test-image")

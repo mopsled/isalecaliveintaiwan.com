@@ -142,13 +142,11 @@ exports.createServer = function(twilioMessageValidator) {
         var validTwilioRequest = twilioMessageValidator(req);
         if (validTwilioRequest) {
           debug("Valid twilio request!");
-          writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
-          exports.getLatestMms().then(function(image) {
-            store["mmsSentDate"] = image.sent;
-            return exports.downloadFile(image.url, "images/latest.jpg");
-          }).then(function() {
-            return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-          }).done();
+          exports.updateLatestMMS().done(function(isWebsiteUpdated) {
+            if (isWebsiteUpdated) {
+              writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+            }
+          });
         } else {
           debug("Invalid twilio request!");
           res.sendStatus(403);
@@ -160,6 +158,29 @@ exports.createServer = function(twilioMessageValidator) {
     });
   });
 };
+
+exports.updateLatestMMS = function() {
+  debug("(1/3) Getting latest MMS");
+  var image;
+  return exports.getLatestMms().then(function(latestImage) {
+    image = latestImage;
+
+    if (image.url === store["lastImageSaved"]) {
+      debug("(done) Skipping download, %s has already been saved", image.url);
+      return false;
+    } else {
+      debug("(2/3) Downloading latest MMS from %s", image.url);
+      store["mmsSentDate"] = image.sent;
+      return exports.downloadFile(image.url, "images/latest.jpg").then(function() {
+        debug("(3/3) Creating thumbnail");
+        return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+      }).then(function() {
+        store["lastImageSaved"] = image.url;
+        return true;
+      });
+    }
+  });
+}
 
 exports.createThumbnail = function(inputFile, outputFile) {
   return new Promise(function(resolve, reject) {
