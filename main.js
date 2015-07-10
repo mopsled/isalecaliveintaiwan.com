@@ -134,8 +134,11 @@ exports.createServer = function(twilioMessageValidator) {
         var validTwilioRequest = twilioMessageValidator(req);
         if (validTwilioRequest) {
           debug("Valid twilio request!");
-          writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
-          exports.updateLatestMMS().done();
+          exports.updateLatestMMS().done(function(isWebsiteUpdated) {
+            if (isWebsiteUpdated) {
+              writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+            }
+          });
         } else {
           debug("Invalid twilio request!");
           res.sendStatus(403);
@@ -155,8 +158,8 @@ exports.updateLatestMMS = function() {
     image = latestImage;
 
     if (image.url === store["lastImageSaved"]) {
-      debug("(3/3) Skipping download, %s has already been saved", image.url);
-      return;
+      debug("(done) Skipping download, %s has already been saved", image.url);
+      return false;
     } else {
       debug("(2/3) Downloading latest MMS from %s", image.url);
       store["mmsSentDate"] = image.sent;
@@ -165,6 +168,7 @@ exports.updateLatestMMS = function() {
         return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
       }).then(function() {
         store["lastImageSaved"] = image.url;
+        return true;
       });
     }
   });
