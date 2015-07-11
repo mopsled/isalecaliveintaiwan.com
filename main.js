@@ -15,6 +15,40 @@ var express = require("express"),
 
 var store = {};
 
+var descriptions = {
+  "0-4": [
+    "Unquestionably",
+    "Undediably"
+  ],
+  "4-24": [
+    "Doubtlessly",
+    "Obviously",
+    "Clearly",
+    "Surely"
+  ],
+  "24-48": [
+    "Presumably",
+    "Presumptively",
+    "Seemingly",
+    "Probably",
+    "Most likely"
+  ],
+  "48-72": [
+    "Maybe",
+    "Imaginably",
+    "Plausibly",
+    "Feasibly",
+    "Indeterminately"
+  ],
+  "72+": [
+    "Questionably",
+    "Uncertainly",
+    "Undecidedly",
+    "Dubiously",
+    "Disputably"
+  ]
+}
+
 var client;
 exports.getTwilioClient = function() {
   if (client) {
@@ -126,7 +160,10 @@ exports.createServer = function(twilioMessageValidator) {
         .use(bodyParser.urlencoded({ extended: true }));
 
       app.get('/', function(req, res) {
-        res.render('index', { timespan: moment(store["mmsSentDate"]).fromNow() });
+        var hoursSinceLastUpdate = moment(new Date()).diff(moment(store["mmsSentDate"]), 'hours');
+        var description = exports.getDescriptionFromHours(hoursSinceLastUpdate);
+        var timespan = moment(store["mmsSentDate"]).fromNow();
+        res.render('index', { timespan: timespan, description: description });
       });
 
       app.post("/twilio", function(req, res) {
@@ -150,6 +187,31 @@ exports.createServer = function(twilioMessageValidator) {
     }).done();
   });
 };
+
+exports.getDescriptionFromHours = function(hours) {
+  var range;
+  if (hours < 4) {
+    range = "0-4";
+  } else if (hours < 24) {
+    range = "4-24";
+  } else if (hours < 48) {
+    range = "24-48";
+  } else if (hours < 72) {
+    range = "48-72";
+  } else {
+    range = "72+";
+  }
+
+  if (range === store["lastRange"]) {
+    return store["lastDescription"];
+  } else {
+    var rangeDescriptions = descriptions[range];
+    var randomItem = rangeDescriptions[Math.floor(Math.random()*rangeDescriptions.length)];
+    store["lastRange"] = range;
+    store["lastDescription"] = randomItem;
+    return randomItem;
+  }
+}
 
 exports.updateLatestMMS = function() {
   debug("(1/3) Getting latest MMS");
