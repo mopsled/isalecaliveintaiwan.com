@@ -18,12 +18,15 @@ var store = {};
 var descriptions = {
   "0-4": [
     "Unquestionably",
-    "Undediably"
+    "Obviously",
+    "Undediably",
+    "Conclusively",
+    "Unmistakably"
   ],
   "4-24": [
-    "Obviously",
     "Doubtlessly",
     "Clearly",
+    "Assuredly",
     "Surely"
   ],
   "24-48": [
@@ -38,12 +41,14 @@ var descriptions = {
     "Imaginably",
     "Plausibly",
     "Feasibly",
-    "Indeterminately"
+    "Possibly",
+    "Conceivably",
   ],
   "72+": [
     "Questionably",
     "Uncertainly",
     "Undecidedly",
+    "Indeterminately",
     "Dubiously",
     "Disputably"
   ]
