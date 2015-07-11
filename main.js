@@ -21,8 +21,8 @@ var descriptions = {
     "Undediably"
   ],
   "4-24": [
-    "Doubtlessly",
     "Obviously",
+    "Doubtlessly",
     "Clearly",
     "Surely"
   ],
@@ -267,11 +267,13 @@ function writeSmsResponse(res, message) {
 }
 
 function setReminderTimer() {
-  var schedule = later.parse.recur().every(2).hour().after('08:00').time();
+  later.date.localTime();
+  var schedule = later.parse.text('every 2 hours after 8:00 am');
   later.setInterval(sendReminderIfNecessary, schedule);
 }
 
 function setUpdateTimer() {
+  later.date.localTime();
   var schedule = later.parse.recur().every(2).hour();
   later.setInterval(exports.updateLatestMMS, schedule);
 }

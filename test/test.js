@@ -96,7 +96,7 @@ describe("Main", function() {
     var app;
 
     before(function(done) {
-      this.timeout(10000);
+      this.timeout(20000);
       nock("https://media.twiliocdn.com:443")
         .filteringPath(/^.+$/, "/test-image")
         .get("/test-image")
@@ -125,7 +125,7 @@ describe("Main", function() {
     });
 
     it("should respond with 200 for a valid post to /twilio", function(done) {
-      this.timeout(10000);
+      this.timeout(20000);
 
       // First nock for server startup
       nock("https://media.twiliocdn.com:443")
