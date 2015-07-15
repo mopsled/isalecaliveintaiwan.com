@@ -27,7 +27,8 @@ var descriptions = {
     "Doubtlessly",
     "Clearly",
     "Assuredly",
-    "Surely"
+    "Surely",
+    "Evidently"
   ],
   "24-48": [
     "Presumably",
