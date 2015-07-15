@@ -154,16 +154,7 @@ exports.createServer = function(twilioMessageValidator) {
   return new Promise(function(resolve, reject) {
     exports.checkEnvironmentVariables();
 
-    debug("(1/4) Getting latest MMS");
-    exports.getLatestMms().then(function(image) {
-      debug("(2/4) Downloading latest MMS from %s", image.url);
-      store["mmsSentDate"] = image.sent;
-      return exports.downloadFile(image.url, "images/latest.jpg");
-    }).then(function() {
-      debug("(3/4) Creating thumbnail");
-      return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
-    }).then(function() {
-      debug("(4/4) Defining server")
+    exports.updateLatestMMS().then(function() {
       var port = 10080;
 
       var app = express();
