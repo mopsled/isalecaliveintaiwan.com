@@ -6,10 +6,16 @@ html
 			body {
 				text-align: center;
 			}
-	body
+		script.
+			function onBodyLoad() {
+				var dateUpdated = new Date("#{dateUpdated}");
+				document.getElementById("timespan").setAttribute("title", dateUpdated.toLocaleString());
+			}
+
+	body(onload="onBodyLoad()")
 		pre Alec is
 		pre #{description.toUpperCase()} ALIVE
 		pre in Taiwan
 		a(href="/images/latest.jpg")
 			img(src="/images/latest-small.jpg")
-		pre(title="#{readableDate}") Updated #{timespan}
+		pre(id="timespan") Updated #{timespan}
