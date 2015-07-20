@@ -168,7 +168,8 @@ exports.createServer = function(twilioMessageValidator) {
         var hoursSinceLastUpdate = moment(new Date()).diff(moment(store["mmsSentDate"]), 'hours');
         var description = exports.getDescriptionFromHours(hoursSinceLastUpdate);
         var timespan = moment(store["mmsSentDate"]).fromNow();
-        res.render('index', { timespan: timespan, description: description });
+        var readableDate = moment(store["mmsSentDate"]).format("dddd, MMMM Do YYYY, h:mm:ss a");
+        res.render('index', { timespan: timespan, readableDate: readableDate, description: description });
       });
 
       app.post("/twilio", function(req, res) {
