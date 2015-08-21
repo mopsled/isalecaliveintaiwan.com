@@ -94,6 +94,8 @@ exports.getLatestMms = function() {
 
     var media = allMediaResponse.media_list[0];
     var imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
+    var sentDate = new Date(mostRecentMMSMessage.date_sent);
+    debug("Lastest MMS sent date: " + sentDate);
 
     return { url: imageUrl, sent: new Date(mostRecentMMSMessage.date_sent) };
   }).fail(function(error) {
@@ -155,8 +157,6 @@ exports.createServer = function(twilioMessageValidator) {
     exports.checkEnvironmentVariables();
 
     exports.updateLatestMMS().then(function() {
-      var port = 10080;
-
       var app = express();
       app
         .set("views", __dirname + "/views")
