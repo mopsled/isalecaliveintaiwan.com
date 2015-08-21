@@ -97,7 +97,7 @@ exports.getLatestMms = function() {
     var sentDate = new Date(mostRecentMMSMessage.date_sent);
     debug("Lastest MMS sent date: " + sentDate);
 
-    return { url: imageUrl, sent: new Date(mostRecentMMSMessage.date_sent) };
+    return { url: imageUrl, sent: sentDate };
   }).fail(function(error) {
     throw new Error("Failed to get latest MMS Url: " + error);
   });
