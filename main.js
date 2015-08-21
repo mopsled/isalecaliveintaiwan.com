@@ -95,7 +95,7 @@ exports.getLatestMms = function() {
     var media = allMediaResponse.media_list[0];
     var imageUrl = "https://api.twilio.com" + media.uri.replace(/\.json$/, "");
     var sentDate = new Date(mostRecentMMSMessage.date_sent);
-    debug("Lastest MMS sent date: " + sentDate);
+    debug("Latest MMS sent date: " + sentDate);
 
     return { url: imageUrl, sent: sentDate };
   }).fail(function(error) {
