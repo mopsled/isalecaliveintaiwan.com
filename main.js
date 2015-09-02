@@ -76,7 +76,9 @@ exports.getLatestMms = function() {
 
     for (var i = 0; i < allMessagesResponse.messages.length; i++) {
       var message = allMessagesResponse.messages[i];
-      if (message.num_media == "1" && message.body.match(new RegExp(process.env.MMS_SECRET))) {
+      if (message.num_media == "1" &&
+          message.body.match(new RegExp(process.env.MMS_SECRET)) &&
+          message.status == "received") {
         mostRecentMMSMessage = message;
         break;
       }
