@@ -101,6 +101,7 @@ exports.getLatestMms = function() {
 
     return { url: imageUrl, sent: createdDate };
   }).fail(function(error) {
+    debug("Failed to get latest MMS Url: " + error);
     throw new Error("Failed to get latest MMS Url: " + error);
   });
 };
