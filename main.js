@@ -112,6 +112,7 @@ exports.checkEnvironmentVariables = function() {
     "TWILIO_AUTH_TOKEN",
     "TRUSTED_PHONE_NUMBER",
     "TWILIO_PHONE_NUMBER",
+    "NAG_PHONE_NUMBER",
     "MMS_SECRET"
   ];
 
@@ -298,7 +299,7 @@ function sendReminderIfNecessary() {
     debug("hoursSinceLastUpdate: %d, sending a reminder text", hoursSinceLastUpdate);
     var client = exports.getTwilioClient();
     client.sms.messages.post({
-      to: process.env.TRUSTED_PHONE_NUMBER,
+      to: process.env.NAG_PHONE_NUMBER,
       from: process.env.TWILIO_PHONE_NUMBER,
       body: "It's been " + hoursSinceLastUpdate + " hours since last update"
     }, function(err, text) {
