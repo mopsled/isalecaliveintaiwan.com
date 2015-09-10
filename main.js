@@ -184,10 +184,11 @@ exports.createServer = function(twilioMessageValidator) {
           exports.updateLatestMMS().done(function(isWebsiteUpdated) {
             if (isWebsiteUpdated) {
               writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+            } else {
+              res.sendStatus(200);
+              res.end();
             }
           });
-          res.sendStatus(200);
-          res.end();
         } else {
           debug("Invalid twilio request!");
           res.sendStatus(403);
