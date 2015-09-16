@@ -9,6 +9,8 @@ var express = require("express"),
     Promise = require("bluebird"),
     replay = require("request-replay"),
     debug = require("debug")("iaait.com"),
+    Chance = require("chance"),
+    chance = new Chance(),
     moment = require("moment"),
     later = require("later"),
     lwip = require("lwip");
@@ -173,7 +175,12 @@ exports.createServer = function(twilioMessageValidator) {
         var description = exports.getDescriptionFromHours(hoursSinceLastUpdate);
         var timespan = moment(store["mmsSentDate"]).fromNow();
         var dateUpdated = store["mmsSentDate"].toISOString();
-        res.render('index', { timespan: timespan, dateUpdated: dateUpdated, description: description });
+        res.render('index', {
+          timespan: timespan,
+          dateUpdated: dateUpdated,
+          description: description,
+          latestLargeImage: store["latestLargeImage"],
+          latestThumbnailImage: store["latestThumbnailImage"] });
       });
 
       app.post("/twilio", function(req, res) {
@@ -238,9 +245,12 @@ exports.updateLatestMMS = function() {
     } else {
       debug("(2/3) Downloading latest MMS from %s", image.url);
       store["mmsSentDate"] = image.sent;
-      return exports.downloadFile(image.url, "images/latest.jpg").then(function() {
+      var randomIdentifier = chance.word();
+      store["latestLargeImage"] = "images/" + randomIdentifier + ".jpg";
+      store["latestThumbnailImage"] = "images/" + randomIdentifier + "-small.jpg"
+      return exports.downloadFile(image.url, store["latestLargeImage"]).then(function() {
         debug("(3/3) Creating thumbnail");
-        return exports.createThumbnail("images/latest.jpg", "images/latest-small.jpg");
+        return exports.createThumbnail(store["latestLargeImage"], store["latestThumbnailImage"]);
       }).then(function() {
         store["lastImageSaved"] = image.url;
         return true;
