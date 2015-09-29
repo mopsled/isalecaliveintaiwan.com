@@ -188,14 +188,27 @@ exports.createServer = function(twilioMessageValidator) {
         var validTwilioRequest = twilioMessageValidator(req);
         if (validTwilioRequest) {
           debug("Valid twilio request!");
+          writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+
           exports.updateLatestMMS().done(function(isWebsiteUpdated) {
             if (isWebsiteUpdated) {
-              writeSmsResponse(res, "Updated isalecaliveintaiwan.com");
+              debug("(early try) Updated isalecaliveintaiwan.com with new picture!");
             } else {
-              res.sendStatus(200);
-              res.end();
+              debug("(early try) Did not update isalecaliveintaiwan.com with new picture");
             }
           });
+
+          // Sometimes the update doesn't work right away - try to update in 60s
+          setTimeout(function() {
+            exports.updateLatestMMS().done(function(isWebsiteUpdated) {
+              if (isWebsiteUpdated) {
+                debug("(late try) Updated isalecaliveintaiwan.com with new picture!");
+              } else {
+                debug("(late try) Did not update isalecaliveintaiwan.com with new picture");
+              }
+            });
+          }, 60 * 1000);
+
         } else {
           debug("Invalid twilio request!");
           res.sendStatus(403);
