@@ -37,5 +37,8 @@
     "test:debug": "node-debug _mocha",
     "coverage": "istanbul cover _mocha --",
     "start": "forever -w --watchDirectory . --watchIgnore '!{main.js,{views}/**}' main.js"
+  },
+  "engines": {
+    "node": "0.12.7"
   }
 }
