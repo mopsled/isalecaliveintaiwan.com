@@ -21,7 +21,7 @@ var descriptions = {
   "0-4": [
     "Unquestionably",
     "Obviously",
-    "Undediably",
+    "Undeniably",
     "Conclusively",
     "Unmistakably"
   ],
