@@ -1,21 +1,31 @@
 doctype html
 html
-	head
-		title Is Alec Alive In Taiwan?
-		style.
-			body {
-				text-align: center;
-			}
-		script.
-			function onBodyLoad() {
-				var dateUpdated = new Date("#{dateUpdated}");
-				document.getElementById("timespan").setAttribute("title", dateUpdated.toLocaleString());
-			}
+  head
+    title Is Alec Alive In Taiwan?
+    style.
+      body {
+        margin:40px auto;
+        max-width:650px;
+        line-height:1.6;
+        font-size:18px;
+        color:#444;
+        padding:0 10px;
+        text-align: center;
+        font-family: Helvetica, Arial, sans-serif;
+      }
+      h1, h2, h3 {
+        line-height:1.2
+      }
+    script.
+      function onBodyLoad() {
+        var dateUpdated = new Date("#{dateUpdated}");
+        document.getElementById("timespan").setAttribute("title", dateUpdated.toLocaleString());
+      }
 
-	body(onload="onBodyLoad()")
-		pre Alec is
-		pre #{description.toUpperCase()} ALIVE
-		pre in Taiwan
-		a(href="#{latestLargeImage}")
-			img(src="#{latestThumbnailImage}")
-		pre(id="timespan") Updated #{timespan}
+  body(onload="onBodyLoad()")
+    h2 Alec is
+    h1 #{description.toUpperCase()} ALIVE
+    h3 in Taiwan
+    a(href="#{latestLargeImage}")
+      img(src="#{latestThumbnailImage}")
+    p(id="timespan") Updated #{timespan}
