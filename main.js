@@ -279,7 +279,7 @@ exports.createThumbnail = function(inputFile, outputFile) {
         reject(err);
       }
 
-      var scale = 1280 / Math.max(image.width(), image.height());
+      var scale = 640 / Math.max(image.width(), image.height());
 
       image.batch()
         .scale(scale)
